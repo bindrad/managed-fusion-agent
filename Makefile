@@ -83,7 +83,7 @@ endif
 # ===== Make targets ===== #
 
 .PHONY: all
-all: manager
+all: manager awsDataGather
 
 ##@ General
 
@@ -130,6 +130,10 @@ test: manifests generate fmt vet envtest ## Run tests.
 manager: generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
+.PHONY: awsDataGather
+awsDataGather: cmd/awsDataGather/main.go pkg/aws/imds_client.go
+	go build -o bin/awsDataGather cmd/awsDataGather/main.go
+
 .PHONY: export_env_vars
 export_env_vars:
 export NAMESPACE = openshift-storage
@@ -158,6 +162,7 @@ docker-push: ## Push docker image with the manager.
 
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 	./shim/shim.sh install
 
 .PHONY: uninstall
@@ -178,6 +183,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 bundle: manifests kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests --interactive=false -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
+	cd config/aws-data-gather && $(KUSTOMIZE) edit set image controller=$(IMG)
 	cd config/manifests/bases && \
 		rm -rf kustomization.yaml && \
 		$(KUSTOMIZE) create --resources managed-fusion-agent.clusterserviceversion.yaml && \
@@ -186,7 +192,7 @@ bundle: manifests kustomize operator-sdk ## Generate bundle manifests and metada
 		--patch '[{"op": "replace", "path": "/spec/replaces", "value": "managed-fusion-agent.v$(REPLACES)"}]'
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
 		-q \
-		--extra-service-accounts prometheus-k8s \
+		--extra-service-accounts prometheus-k8s,aws-data-gather \
 		--overwrite \
 		--version $(VERSION) \
 		$(BUNDLE_METADATA_OPTS) \
