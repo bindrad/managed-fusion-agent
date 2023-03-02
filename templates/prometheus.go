@@ -109,6 +109,7 @@ var PrometheusTemplate = promv1.Prometheus{
 	},
 }
 
+//nolint:deadcode,unused
 func getRelableRegex(alerts []string, metrics []string) string {
 	return fmt.Sprintf(
 		"(ALERTS;(%s))|%s",
