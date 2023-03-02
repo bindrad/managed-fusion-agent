@@ -40,36 +40,6 @@ var (
 	PrometheusServingCertSecretName     string = "prometheus-serving-cert-secret"
 	PrometheusKubeRBACPoxyConfigMapName string = "prometheus-kube-rbac-proxy-config"
 )
-var metrics = []string{
-	"job:ceph_versions_running:count",
-	"job:ceph_pools_iops_bytes:total",
-	"job:ceph_pools_iops:total",
-	"job:kube_pv:count",
-	"job:ceph_osd_metadata:count",
-	"ceph_health_status",
-	"ceph_cluster_total_used_raw_bytes",
-	"ceph_cluster_total_bytes",
-	"cluster:kubelet_volume_stats_used_bytes:provisioner:sum",
-	"cluster:kube_persistentvolumeclaim_resource_requests_storage_bytes:provisioner:sum",
-}
-
-var alerts = []string{
-	"CephMdsMissingReplicas",
-	"CephMgrIsAbsent",
-	"CephMgrIsMissingReplicas",
-	"CephNodeDown",
-	"CephClusterErrorState",
-	"CephClusterWarningState",
-	"CephOSDVersionMismatch",
-	"CephMonVersionMismatch",
-	"CephOSDFlapping",
-	"CephOSDDiskNotResponding",
-	"CephOSDDiskUnavailable",
-	"CephDataRecoveryTakingTooLong",
-	"CephPGRepairTakingTooLong",
-	"CephMonQuorumAtRisk",
-	"CephMonQuorumLost",
-}
 
 var PrometheusTemplate = promv1.Prometheus{
 	Spec: promv1.PrometheusSpec{
@@ -132,28 +102,6 @@ var PrometheusTemplate = promv1.Prometheus{
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: PrometheusKubeRBACPoxyConfigMapName,
 						},
-					},
-				},
-			},
-		},
-		RemoteWrite: []promv1.RemoteWriteSpec{
-			{
-				OAuth2: &promv1.OAuth2{
-					ClientSecret: corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{},
-					},
-					ClientID: promv1.SecretOrConfigMap{
-						Secret: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{},
-						},
-					},
-					EndpointParams: map[string]string{},
-				},
-				WriteRelabelConfigs: []promv1.RelabelConfig{
-					{
-						SourceLabels: []string{"__name__", "alertname"},
-						Regex:        getRelableRegex(alerts, metrics),
-						Action:       "keep",
 					},
 				},
 			},
