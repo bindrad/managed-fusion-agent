@@ -190,7 +190,6 @@ func (r *ManagedFusionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	log.Info("Starting reconcile for ManangedFusionDeployment")
 
 	r.initReconciler(ctx, req)
-
 	if err := r.get(r.managedFusionSecret); err != nil {
 		if errors.IsNotFound(err) {
 			r.Log.V(-1).Info("managed-fusion-agent-config secret resource not found")
@@ -201,21 +200,21 @@ func (r *ManagedFusionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	// Run the reconcile phases
-	var result reconcile.Result
-	var err error
-	if result, err = r.reconcilePhases(); err != nil {
+	if result, err := r.reconcilePhases(); err != nil {
 		r.Log.Error(err, "An error was encountered during reconcilePhases")
-	}
-	if err != nil {
 		return ctrl.Result{}, err
 	} else {
 		return result, nil
 	}
-
 }
 
 func (r *ManagedFusionReconciler) initReconciler(ctx context.Context, req ctrl.Request) {
 	r.ctx = ctx
+
+	// This is an input resource
+	r.managedFusionSecret = &corev1.Secret{}
+	r.managedFusionSecret.Name = managedFusionSecretName
+	r.managedFusionSecret.Namespace = r.Namespace
 
 	r.prometheus = &promv1.Prometheus{}
 	r.prometheus.Name = prometheusName
@@ -253,10 +252,6 @@ func (r *ManagedFusionReconciler) initReconciler(ctx context.Context, req ctrl.R
 	r.alertRelabelConfigSecret.Name = alertRelabelConfigSecretName
 	r.alertRelabelConfigSecret.Namespace = r.Namespace
 
-	r.managedFusionSecret = &corev1.Secret{}
-	r.managedFusionSecret.Name = managedFusionSecretName
-	r.managedFusionSecret.Namespace = r.Namespace
-
 	r.smtpConfigData = &smtpConfig{}
 	r.pagerDutyConfigData = &pagerDutyConfig{}
 }
@@ -264,7 +259,7 @@ func (r *ManagedFusionReconciler) initReconciler(ctx context.Context, req ctrl.R
 func (r *ManagedFusionReconciler) reconcilePhases() (reconcile.Result, error) {
 	if !r.managedFusionSecret.DeletionTimestamp.IsZero() {
 		if r.verifyOfferringsDoNotExist() {
-			r.Log.Info("removing finalizer from managed-fusion-agent-config resource")
+			r.Log.Info("removing finalizer from managed-fusion-agent-config secret")
 			r.managedFusionSecret.SetFinalizers(utils.Remove(r.managedFusionSecret.GetFinalizers(), managedFusionFinalizer))
 			if err := r.Client.Update(r.ctx, r.managedFusionSecret); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to remove finalizer from managed-fusion-agent-config secret: %v", err)
