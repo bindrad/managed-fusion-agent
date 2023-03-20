@@ -17,7 +17,6 @@ import (
 )
 
 const (
-	enableMCGKey           = "enableMCG"
 	usableCapacityInTiBKey = "usableCapacityInTiB"
 	deviceSetName          = "default"
 )
@@ -32,6 +31,7 @@ type dataFoundationReconciler struct {
 
 	spec                          dataFoundationSpec
 	onboardingValidationKeySecret *corev1.Secret
+	storageCluster                *ocsv1.StorageCluster
 }
 
 //+kubebuilder:rbac:groups=ocs.openshift.io,namespace=system,resources=storageclusters,verbs=get;list;watch;create;update;patch;delete
@@ -69,6 +69,10 @@ func (r *dataFoundationReconciler) initReconciler(offeringReconciler *ManagedFus
 	r.onboardingValidationKeySecret = &corev1.Secret{}
 	r.onboardingValidationKeySecret.Name = "onboarding-ticket-key"
 	r.onboardingValidationKeySecret.Namespace = r.Namespace
+
+	r.storageCluster = &ocsv1.StorageCluster{}
+	r.storageCluster.Name = "ocs-storagecluster"
+	r.storageCluster.Namespace = r.Namespace
 }
 
 func (r *dataFoundationReconciler) parseSpec(offering *v1alpha1.ManagedFusionOffering) error {
@@ -139,32 +143,18 @@ func (r *dataFoundationReconciler) reconcileOnboardingValidationSecret() error {
 func (r *dataFoundationReconciler) reconcileStorageCluster() error {
 	r.Log.Info("Reconciling StorageCluster")
 
-	storageCluster := &ocsv1.StorageCluster{}
-	storageCluster.Name = "ocs-storagecluster"
-	storageCluster.Namespace = r.managedFusionOffering.Namespace
-	_, err := ctrl.CreateOrUpdate(r.Ctx, r.Client, storageCluster, func() error {
-		if err := r.own(storageCluster); err != nil {
+	_, err := ctrl.CreateOrUpdate(r.Ctx, r.Client, r.storageCluster, func() error {
+		if err := r.own(r.storageCluster); err != nil {
 			return err
 		}
-		sizeAsString := r.managedFusionOffering.Spec.Config["usableCapacityInTiB"]
-
-		// Setting hardcoded value here to force no MCG deployment
-		enableMCGAsString := "false"
-		if enableMCGRaw, exists := r.managedFusionOffering.Spec.Config[enableMCGKey]; exists {
-			enableMCGAsString = enableMCGRaw
-		}
-		r.Log.Info("Requested add-on settings", usableCapacityInTiBKey, sizeAsString, enableMCGKey, enableMCGAsString)
-		desiredSize, err := strconv.Atoi(sizeAsString)
-		if err != nil {
-			return fmt.Errorf("invalid storage cluster size value: %v", sizeAsString)
-		}
+		r.Log.Info("Requested add-on settings", usableCapacityInTiBKey, r.spec.usableCapacityInTiB)
 
 		// Convert the desired size to the device set count based on the underlaying OSD size
-		desiredDeviceSetCount := int(math.Ceil(float64(desiredSize) / templates.ProviderOSDSizeInTiB))
+		desiredDeviceSetCount := int(math.Ceil(float64(r.spec.usableCapacityInTiB) / templates.ProviderOSDSizeInTiB))
 
 		// Get the storage device set count of the current storage cluster
 		currDeviceSetCount := 0
-		if desiredStorageDeviceSet := findStorageDeviceSet(storageCluster.Spec.StorageDeviceSets, deviceSetName); desiredStorageDeviceSet != nil {
+		if desiredStorageDeviceSet := findStorageDeviceSet(r.storageCluster.Spec.StorageDeviceSets, deviceSetName); desiredStorageDeviceSet != nil {
 			currDeviceSetCount = desiredStorageDeviceSet.Count
 		}
 
@@ -176,16 +166,8 @@ func (r *dataFoundationReconciler) reconcileStorageCluster() error {
 		}
 
 		// Prevent downscaling by comparing count from secret and count from storage cluster
-		setDeviceSetCount(r, ds, desiredDeviceSetCount, currDeviceSetCount)
+		r.setDeviceSetCount(ds, desiredDeviceSetCount, currDeviceSetCount)
 
-		// Check and enable MCG in Storage Cluster spec
-		mcgEnable, err := strconv.ParseBool(enableMCGAsString)
-		if err != nil {
-			return fmt.Errorf("invalid Enable MCG value: %v", enableMCGAsString)
-		}
-		if err := ensureMCGDeployment(r, sc, mcgEnable); err != nil {
-			return err
-		}
 		return nil
 	})
 	if err != nil {
@@ -206,7 +188,7 @@ func findStorageDeviceSet(storageDeviceSets []ocsv1.StorageDeviceSet, deviceSetN
 	return nil
 }
 
-func setDeviceSetCount(r *dataFoundationReconciler, deviceSet *ocsv1.StorageDeviceSet, desiredDeviceSetCount int, currDeviceSetCount int) {
+func (r *dataFoundationReconciler) setDeviceSetCount(deviceSet *ocsv1.StorageDeviceSet, desiredDeviceSetCount int, currDeviceSetCount int) {
 	r.Log.Info("Setting storage device set count", "Current", currDeviceSetCount, "New", desiredDeviceSetCount)
 	if currDeviceSetCount <= desiredDeviceSetCount {
 		deviceSet.Count = desiredDeviceSetCount
@@ -214,15 +196,4 @@ func setDeviceSetCount(r *dataFoundationReconciler, deviceSet *ocsv1.StorageDevi
 		r.Log.V(-1).Info("Requested storage device set count will result in downscaling, which is not supported. Skipping")
 		deviceSet.Count = currDeviceSetCount
 	}
-}
-
-func ensureMCGDeployment(r *dataFoundationReconciler, storageCluster *ocsv1.StorageCluster, mcgEnable bool) error {
-	// Check and enable MCG in Storage Cluster spec
-	if mcgEnable {
-		r.Log.Info("Enabling Multi Cloud Gateway")
-		storageCluster.Spec.MultiCloudGateway.ReconcileStrategy = "manage"
-	} else if storageCluster.Spec.MultiCloudGateway.ReconcileStrategy == "manage" {
-		r.Log.V(-1).Info("Trying to disable Multi Cloud Gateway, Invalid operation")
-	}
-	return nil
 }

@@ -125,9 +125,10 @@ var ProviderStorageClusterTemplate = ocsv1.StorageCluster{
 					preparePlacementTSC,
 				},
 			},
-			Portable:  true,
-			Replica:   3,
-			Resources: utils.GetResourceRequirements("sds"),
+			Portable:    true,
+			Replica:     3,
+			DeviceClass: "ssd",
+			Resources:   utils.GetResourceRequirements("sds"),
 		}},
 		MultiCloudGateway: &ocsv1.MultiCloudGatewaySpec{
 			ReconcileStrategy: "ignore",
@@ -145,5 +146,10 @@ var ProviderStorageClusterTemplate = ocsv1.StorageCluster{
 				DisableSnapshotClass: true,
 			},
 		},
+		DefaultStorageProfile: "default",
+		StorageProfiles: []ocsv1.StorageProfile{{
+			DeviceClass: "ssd",
+			Name:        "default",
+		}},
 	},
 }
