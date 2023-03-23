@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	v1alpha1 "github.com/red-hat-storage/managed-fusion-agent/api/v1alpha1"
-	"github.com/red-hat-storage/managed-fusion-agent/templates"
+	"github.com/red-hat-storage/managed-fusion-agent/offerings/datafoundation"
 	ocsv1 "github.com/red-hat-storage/ocs-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,8 +17,7 @@ import (
 )
 
 const (
-	usableCapacityInTiBKey = "usableCapacityInTiB"
-	deviceSetName          = "default"
+	deviceSetName = "default"
 )
 
 type dataFoundationSpec struct {
@@ -147,10 +146,9 @@ func (r *dataFoundationReconciler) reconcileStorageCluster() error {
 		if err := r.own(r.storageCluster); err != nil {
 			return err
 		}
-		r.Log.Info("Requested add-on settings", usableCapacityInTiBKey, r.spec.usableCapacityInTiB)
 
 		// Convert the desired size to the device set count based on the underlaying OSD size
-		desiredDeviceSetCount := int(math.Ceil(float64(r.spec.usableCapacityInTiB) / templates.ProviderOSDSizeInTiB))
+		desiredDeviceSetCount := int(math.Ceil(float64(r.spec.usableCapacityInTiB) / datafoundation.OSDSizeInTiB))
 
 		// Get the storage device set count of the current storage cluster
 		currDeviceSetCount := 0
@@ -159,7 +157,7 @@ func (r *dataFoundationReconciler) reconcileStorageCluster() error {
 		}
 
 		// Get the desired storage device set from storage cluster template
-		sc := templates.ProviderStorageClusterTemplate.DeepCopy()
+		sc := datafoundation.StorageClusterTemplate.DeepCopy()
 		var ds *ocsv1.StorageDeviceSet = nil
 		if desiredStorageDeviceSet := findStorageDeviceSet(sc.Spec.StorageDeviceSets, deviceSetName); desiredStorageDeviceSet != nil {
 			ds = desiredStorageDeviceSet

@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package templates
+package datafoundation
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ import (
 // StorageClusterTemplate is the template that serves as the base for the storage clsuter deployed by the operator
 
 const (
-	ProviderOSDSizeInTiB = 4
+	OSDSizeInTiB = 4
 )
 
 var (
@@ -64,7 +64,7 @@ var preparePlacementTSC corev1.TopologySpreadConstraint = corev1.TopologySpreadC
 	},
 }
 
-var ProviderStorageClusterTemplate = ocsv1.StorageCluster{
+var StorageClusterTemplate = ocsv1.StorageCluster{
 	Spec: ocsv1.StorageClusterSpec{
 		// The label selector is used to select only the worker nodes for
 		// both labeling and scheduling.
@@ -109,7 +109,7 @@ var ProviderStorageClusterTemplate = ocsv1.StorageCluster{
 					VolumeMode: &volumeModeBlock,
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
-							"storage": resource.MustParse(fmt.Sprintf("%dTi", ProviderOSDSizeInTiB)),
+							"storage": resource.MustParse(fmt.Sprintf("%dTi", OSDSizeInTiB)),
 						},
 					},
 				},
