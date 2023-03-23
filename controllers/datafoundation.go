@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	deviceSetName = "default"
+	defaultDeviceSetName = "default"
 )
 
 type dataFoundationSpec struct {
@@ -152,14 +152,14 @@ func (r *dataFoundationReconciler) reconcileStorageCluster() error {
 
 		// Get the storage device set count of the current storage cluster
 		currDeviceSetCount := 0
-		if desiredStorageDeviceSet := findStorageDeviceSet(r.storageCluster.Spec.StorageDeviceSets, deviceSetName); desiredStorageDeviceSet != nil {
+		if desiredStorageDeviceSet := findStorageDeviceSet(r.storageCluster.Spec.StorageDeviceSets, defaultDeviceSetName); desiredStorageDeviceSet != nil {
 			currDeviceSetCount = desiredStorageDeviceSet.Count
 		}
 
 		// Get the desired storage device set from storage cluster template
 		sc := datafoundation.StorageClusterTemplate.DeepCopy()
 		var ds *ocsv1.StorageDeviceSet = nil
-		if desiredStorageDeviceSet := findStorageDeviceSet(sc.Spec.StorageDeviceSets, deviceSetName); desiredStorageDeviceSet != nil {
+		if desiredStorageDeviceSet := findStorageDeviceSet(sc.Spec.StorageDeviceSets, defaultDeviceSetName); desiredStorageDeviceSet != nil {
 			ds = desiredStorageDeviceSet
 		}
 

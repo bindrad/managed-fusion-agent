@@ -96,9 +96,29 @@ var StorageClusterTemplate = ocsv1.StorageCluster{
 			"mon":            GetResourceRequirements("mon"),
 			"crashcollector": GetResourceRequirements("crashcollector"),
 		},
+		StorageProfiles: []ocsv1.StorageProfile{{
+			DeviceClass: "ssd",
+			Name:        "default",
+			BlockPoolConfiguration: ocsv1.BlockPoolConfigurationSpec{
+				Parameters: map[string]string{
+					"pg_autoscale_mode": "on",
+					"pg_num":            "128",
+					"pgp_num":           "128",
+				},
+			},
+			SharedFilesystemConfiguration: ocsv1.SharedFilesystemConfigurationSpec{
+				Parameters: map[string]string{
+					"pg_autoscale_mode": "on",
+					"pg_num":            "128",
+					"pgp_num":           "128",
+				},
+			},
+		}},
 		StorageDeviceSets: []ocsv1.StorageDeviceSet{{
 			Name:  "default",
 			Count: 1,
+			Replica:     3,
+			DeviceClass: "ssd",
 			DataPVCTemplate: corev1.PersistentVolumeClaim{
 				Spec: corev1.PersistentVolumeClaimSpec{
 					StorageClassName: &gp2,
@@ -125,8 +145,6 @@ var StorageClusterTemplate = ocsv1.StorageCluster{
 				},
 			},
 			Portable:    true,
-			Replica:     3,
-			DeviceClass: "ssd",
 			Resources:   GetResourceRequirements("sds"),
 		}},
 		MultiCloudGateway: &ocsv1.MultiCloudGatewaySpec{
@@ -146,23 +164,5 @@ var StorageClusterTemplate = ocsv1.StorageCluster{
 			},
 		},
 		DefaultStorageProfile: "default",
-		StorageProfiles: []ocsv1.StorageProfile{{
-			DeviceClass: "ssd",
-			Name:        "default",
-			BlockPoolConfiguration: ocsv1.BlockPoolConfigurationSpec{
-				Parameters: map[string]string{
-					"pg_autoscale_mode": "on",
-					"pg_num":            "128",
-					"pgp_num":           "128",
-				},
-			},
-			SharedFilesystemConfiguration: ocsv1.SharedFilesystemConfigurationSpec{
-				Parameters: map[string]string{
-					"pg_autoscale_mode": "on",
-					"pg_num":            "128",
-					"pgp_num":           "128",
-				},
-			},
-		}},
 	},
 }
