@@ -15,7 +15,6 @@ package datafoundation
 import (
 	"fmt"
 
-	"github.com/red-hat-storage/managed-fusion-agent/utils"
 	ocsv1 "github.com/red-hat-storage/ocs-operator/api/v1"
 	rook "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -92,10 +91,10 @@ var StorageClusterTemplate = ocsv1.StorageCluster{
 			},
 		},
 		Resources: map[string]corev1.ResourceRequirements{
-			"mds":            utils.GetResourceRequirements("mds"),
-			"mgr":            utils.GetResourceRequirements("mgr"),
-			"mon":            utils.GetResourceRequirements("mon"),
-			"crashcollector": utils.GetResourceRequirements("crashcollector"),
+			"mds":            GetResourceRequirements("mds"),
+			"mgr":            GetResourceRequirements("mgr"),
+			"mon":            GetResourceRequirements("mon"),
+			"crashcollector": GetResourceRequirements("crashcollector"),
 		},
 		StorageDeviceSets: []ocsv1.StorageDeviceSet{{
 			Name:  "default",
@@ -128,7 +127,7 @@ var StorageClusterTemplate = ocsv1.StorageCluster{
 			Portable:    true,
 			Replica:     3,
 			DeviceClass: "ssd",
-			Resources:   utils.GetResourceRequirements("sds"),
+			Resources:   GetResourceRequirements("sds"),
 		}},
 		MultiCloudGateway: &ocsv1.MultiCloudGatewaySpec{
 			ReconcileStrategy: "ignore",
@@ -150,6 +149,20 @@ var StorageClusterTemplate = ocsv1.StorageCluster{
 		StorageProfiles: []ocsv1.StorageProfile{{
 			DeviceClass: "ssd",
 			Name:        "default",
+			BlockPoolConfiguration: ocsv1.BlockPoolConfigurationSpec{
+				Parameters: map[string]string{
+					"pg_autoscale_mode": "on",
+					"pg_num":            "128",
+					"pgp_num":           "128",
+				},
+			},
+			SharedFilesystemConfiguration: ocsv1.SharedFilesystemConfigurationSpec{
+				Parameters: map[string]string{
+					"pg_autoscale_mode": "on",
+					"pg_num":            "128",
+					"pgp_num":           "128",
+				},
+			},
 		}},
 	},
 }

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	v1alpha1 "github.com/red-hat-storage/managed-fusion-agent/api/v1alpha1"
-	"github.com/red-hat-storage/managed-fusion-agent/offerings/datafoundation"
+	"github.com/red-hat-storage/managed-fusion-agent/datafoundation"
 	ocsv1 "github.com/red-hat-storage/ocs-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
