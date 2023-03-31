@@ -21,6 +21,7 @@ COPY cmd/crdCreator crdCreator/
 COPY shim/crds/noobaas.noobaa.io.yaml shim/crds/
 COPY shim/crds/ocsinitializations.ocs.openshift.io.yaml shim/crds/
 COPY shim/crds/storageclusters.ocs.openshift.io.yaml shim/crds/
+COPY shim/crds/objectbucketclaims.objectbucket.io.yaml shim/crds/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
