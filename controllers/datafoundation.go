@@ -37,7 +37,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -81,11 +83,9 @@ func dfSetupWatches(controllerBuilder *builder.Builder) {
 	)
 	controllerBuilder.
 		Owns(&corev1.Secret{}).
-		Owns(&ocsv1.StorageCluster{}).
 		Owns(&netv1.NetworkPolicy{}).
 		Owns(&corev1.ConfigMap{}).
-		Owns(&opv1a1.ClusterServiceVersion{}, csvPredicates).
-		Owns(&ocsv1.OCSInitialization{})
+		Owns(&opv1a1.ClusterServiceVersion{}, csvPredicates)
 }
 
 func DFAddToScheme(scheme *runtime.Scheme) {
@@ -159,6 +159,9 @@ func (r *dataFoundationReconciler) reconcilePhases() (ctrl.Result, error) {
 			return ctrl.Result{Requeue: true, RequeueAfter: 10 * time.Second}, nil
 		}
 	} else {
+		if err := r.checkOCSCSV(); err != nil {
+			return ctrl.Result{}, err
+		}
 		if err := r.reconcileOnboardingValidationSecret(); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -228,6 +231,75 @@ func (r *dataFoundationReconciler) parseSpec(offering *v1alpha1.ManagedFusionOff
 		usableCapacityInTiB:     usableCapacityInTiB,
 		onboardingValidationKey: onboardingValidationKeyAsString,
 	}
+	return nil
+}
+
+func (r *dataFoundationReconciler) checkOCSCSV() error {
+	r.Log.Info("Checking existence of OCS CRDs on the cluster")
+
+	tempSecret := corev1.Secret{}
+	tempSecret.Name = "temp"
+	tempSecret.Namespace = r.offering.Namespace
+	if err := r.get(&tempSecret); err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	if tempSecret.UID != "" {
+		r.Log.Info("Adding watches")
+		if err := r.runtimeController.Watch(
+			&source.Kind{Type: &ocsv1.StorageCluster{}},
+			&handler.EnqueueRequestForOwner{
+				OwnerType:    &v1alpha1.ManagedFusionOffering{},
+				IsController: true,
+			},
+		); err != nil {
+			return fmt.Errorf("unable to add watch: %v", err)
+		}
+		if err := r.runtimeController.Watch(
+			&source.Kind{Type: &ocsv1.OCSInitialization{}},
+			&handler.EnqueueRequestForOwner{
+				OwnerType:    &v1alpha1.ManagedFusionOffering{},
+				IsController: false,
+			},
+		); err != nil {
+			return fmt.Errorf("unable to add watch: %v", err)
+		}
+	}
+
+	// csv, err := r.getCSVByPrefix(ocsOperatorName)
+	// if err != nil && !errors.IsNotFound(err) {
+	// 	return err
+	// } else if errors.IsNotFound(err) {
+
+	// } else if csv.Status.Phase == "Succeeded" {
+
+	// }
+	// if csv.Status.Phase == "Succeeded" {
+	// 	r.Log.Info("Skipping existence of OCS CRDS as they existed earlier")
+	// 	return nil
+	// }
+
+	// if csv.Status.Phase == "Succeeded" {
+	// 	r.doesCRDExists = true
+	// 	if err := r.runtimeController.Watch(
+	// 		&source.Kind{Type: &ocsv1.StorageCluster{}},
+	// 		&handler.EnqueueRequestForOwner{
+	// 			OwnerType:    &v1alpha1.ManagedFusionOffering{},
+	// 			IsController: true,
+	// 		},
+	// 	); err != nil {
+	// 		return fmt.Errorf("unable to add watch: %v", err)
+	// 	}
+	// 	if err := r.runtimeController.Watch(
+	// 		&source.Kind{Type: &ocsv1.OCSInitialization{}},
+	// 		&handler.EnqueueRequestForOwner{
+	// 			OwnerType:    &v1alpha1.ManagedFusionOffering{},
+	// 			IsController: false,
+	// 		},
+	// 	); err != nil {
+	// 		return fmt.Errorf("unable to add watch: %v", err)
+	// 	}
+	// }
+
 	return nil
 }
 

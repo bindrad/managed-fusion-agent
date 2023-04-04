@@ -49,6 +49,7 @@ type ManagedFusionOfferingReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 
+	runtimeController     controller.Controller
 	ctx                   context.Context
 	namespace             string
 	managedFusionOffering *v1alpha1.ManagedFusionOffering
@@ -71,7 +72,13 @@ func (r *ManagedFusionOfferingReconciler) SetupWithManager(mgr ctrl.Manager, ctr
 
 	pluginSetupWatches(controllerBuilder)
 
-	return controllerBuilder.Complete(r)
+	runtimeController, err := controllerBuilder.Build(r)
+	if err != nil {
+		return fmt.Errorf("unable to build controller: %v", err)
+	}
+	r.runtimeController = runtimeController
+
+	return nil
 }
 
 func (r *ManagedFusionOfferingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
